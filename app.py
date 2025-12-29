@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify
 import json
+import os
 
 app = Flask(__name__)
 
@@ -9,7 +10,7 @@ def load_products():
     try:
         with open("products.json", "r") as file:
             return json.load(file)
-    except FileNotFoundError:
+    except (FileNotFoundError, json.JSONDecodeError):
         return []
 
 def save_products(products):
@@ -36,8 +37,12 @@ def get_product(product_id):
 
 @app.route("/products", methods=["POST"])
 def create_product():
-    products = load_products()
     data = request.json
+
+    if not data or "name" not in data or "price" not in data:
+        return jsonify({"error": "Invalid product data"}), 400
+
+    products = load_products()
 
     new_product = {
         "id": max([p["id"] for p in products], default=0) + 1,
@@ -71,8 +76,13 @@ def delete_product(product_id):
         return jsonify({"error": "Product not found"}), 404
 
     save_products(new_products)
-    return jsonify({"message": "Deleted successfully"})
+    return jsonify({"message": "Deleted successfully"}), 200
 
-# ---------------- Run App ----------------
+# ---------------- Run App (Railway Compatible) ----------------
+
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(
+        host="0.0.0.0",
+        port=int(os.environ.get("PORT", 5000)),
+        debug=False
+    )
